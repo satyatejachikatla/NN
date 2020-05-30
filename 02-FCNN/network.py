@@ -16,12 +16,12 @@ SIGMOID = {'g' : sigmoid , 'dg' : d_sigmoid}
 RELU    = {'g' : relu    , 'dg' : d_relu}
 
 def nll(y_,y):
-	epsilon = 1e-323
+	epsilon = 1e-300
 	m = y.shape[1]
 	return -np.sum(y*np.log(y_+epsilon)+(1-y)*np.log(1-y_+epsilon))/m
 
 def d_nll_y(y_,y):
-	epsilon = 1e-323
+	epsilon = 1e-300
 	return -y/(y_+epsilon) + (1-y)/(1-y_+epsilon)
 
 class FullConnected:
@@ -52,10 +52,11 @@ class FullConnected:
 
 ###### Test ########
 
-EPOCHS = 100000
+EPOCHS = 10000
 LEARNING_RATE = 1e-1
 
 m = 100
+split = 10
 x_dim = 5
 x = np.random.randn(x_dim,m)
 y = np.random.randint(2, size=m).reshape(1,m)
@@ -69,23 +70,32 @@ l2 = FullConnected(l2_dim,RELU)
 l3 = FullConnected(l3_dim,SIGMOID)
 
 for e in range(EPOCHS):
-	l1.forward(x)
-	l2.forward(l1.A)
-	l3.forward(l2.A)
+	loss = 0
+	for i in range(m//split):
+		x_batch = x[:,i*split:(i+1)*split]
+		y_batch = y[:,i*split:(i+1)*split]
+		l1.forward(x_batch)
+		l2.forward(l1.A)
+		l3.forward(l2.A)
 
-	loss = nll(l3.A,y)
-	dY   = d_nll_y(l3.A,y)
+		loss += nll(l3.A,y_batch)
+		dY   = d_nll_y(l3.A,y_batch)
 
-	l3.backwards(dY)
-	l2.backwards(l3.dAin)
-	l1.backwards(l2.dAin)
+		l3.backwards(dY)
+		l2.backwards(l3.dAin)
+		l1.backwards(l2.dAin)
 
-	l1.update(LEARNING_RATE)
-	l2.update(LEARNING_RATE)
-	l3.update(LEARNING_RATE)
+		l1.update(LEARNING_RATE)
+		l2.update(LEARNING_RATE)
+		l3.update(LEARNING_RATE)
 
-	if e%1000 == 0:
+	if e%100 == 0:
 		print(loss)
+
+l1.forward(x)
+l2.forward(l1.A)
+l3.forward(l2.A)
+loss = nll(l3.A,y)
 
 print('Final Loss:',loss)
 print('Actual:',y)
@@ -93,3 +103,4 @@ print('Predicted:',np.round(l3.A).astype(int))
 
 acc = 1 - np.sum(np.abs(y-np.round(l3.A)))/m
 print('Acc:',acc)
+
