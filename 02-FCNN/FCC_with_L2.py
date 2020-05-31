@@ -24,6 +24,9 @@ def d_nll_y(y_,y):
 	epsilon = 1e-300
 	return -y/(y_+epsilon) + (1-y)/(1-y_+epsilon)
 
+def L2(x):
+	return np.sum(np.square(x))
+
 class FullConnected:
 	def __init__(self,shape,activation):
 		outSize,inSize = shape
@@ -40,7 +43,7 @@ class FullConnected:
 	def backwards(self,dA):
 		m = dA.shape[1]
 		self.dZ = dA * self.dg(self.Z)
-		self.dW = np.dot(self.dZ, self.Ain.T)/m
+		self.dW = np.dot(self.dZ, self.Ain.T)/m + REGULARIZATION_FACTOR*self.W/m
 		self.dB = np.sum(self.dZ, axis=1,keepdims=True)/m
 
 		self.dAin = np.dot(self.W.T,self.dZ)
@@ -54,6 +57,7 @@ class FullConnected:
 
 EPOCHS = 10000
 LEARNING_RATE = 1e-1
+REGULARIZATION_FACTOR = 1e-2
 
 m = 100
 split = 10
@@ -78,7 +82,9 @@ for e in range(EPOCHS):
 		l2.forward(l1.A)
 		l3.forward(l2.A)
 
-		loss += nll(l3.A,y_batch)
+		Ws= np.concatenate([l1.W.flatten(),l2.W.flatten(),l3.W.flatten()])
+
+		loss += nll(l3.A,y_batch) + REGULARIZATION_FACTOR * L2(Ws)
 		dY   = d_nll_y(l3.A,y_batch)
 
 		l3.backwards(dY)
@@ -96,11 +102,12 @@ l1.forward(x)
 l2.forward(l1.A)
 l3.forward(l2.A)
 loss = nll(l3.A,y)
+Ws= np.concatenate([l1.W.flatten(),l2.W.flatten(),l3.W.flatten()])
 
 print('Final Loss:',loss)
 print('Actual:',y)
 print('Predicted:',np.round(l3.A).astype(int))
-
+print('Weights:',Ws)
 acc = 1 - np.sum(np.abs(y-np.round(l3.A)))/m
 print('Acc:',acc)
 
