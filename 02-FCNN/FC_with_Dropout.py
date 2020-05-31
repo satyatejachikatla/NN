@@ -10,7 +10,7 @@ def d_sigmoid(x):
 def relu(x):
 	return np.maximum(0,x)
 def d_relu(x):
-	return (x > 0).astype(x.dtype)
+	return (x >= 0).astype(x.dtype)
 
 SIGMOID = {'g' : sigmoid , 'dg' : d_sigmoid}
 RELU    = {'g' : relu    , 'dg' : d_relu}
