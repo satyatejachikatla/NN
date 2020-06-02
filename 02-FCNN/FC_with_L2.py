@@ -57,7 +57,7 @@ class FullConnected:
 
 EPOCHS = 10000
 LEARNING_RATE = 1e-1
-REGULARIZATION_FACTOR = 1e-2
+REGULARIZATION_FACTOR = 1e-3
 
 m = 100
 split = 10
@@ -78,13 +78,14 @@ for e in range(EPOCHS):
 	for i in range(m//split):
 		x_batch = x[:,i*split:(i+1)*split]
 		y_batch = y[:,i*split:(i+1)*split]
+		m_batch = split
 		l1.forward(x_batch)
 		l2.forward(l1.A)
 		l3.forward(l2.A)
 
 		Ws= np.concatenate([l1.W.flatten(),l2.W.flatten(),l3.W.flatten()])
 
-		loss += nll(l3.A,y_batch) + REGULARIZATION_FACTOR * L2(Ws)
+		loss += nll(l3.A,y_batch) + REGULARIZATION_FACTOR/2/m_batch * L2(Ws)
 		dY   = d_nll_y(l3.A,y_batch)
 
 		l3.backwards(dY)
