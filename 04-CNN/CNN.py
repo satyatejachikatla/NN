@@ -210,7 +210,7 @@ class Pool:
 						#print(self.Ain_pad[:,hStart:hEnd,wStart:wEnd,c].shape)
 						#print(np.reshape(self.A[:,h,w,c],[*self.A[:,h,w,c].shape,1,1]).shape)
 						#print(dAin_pad[:,hStart:hEnd,wStart:wEnd,c].shape)
-						
+
 						mask = self.Ain_pad[:,hStart:hEnd,wStart:wEnd,c] == np.reshape(self.A[:,h,w,c],[*self.A[:,h,w,c].shape,1,1])
 					elif self.poolType == 'AVG':
 						mask = 1/(self.kWidth*self.kHeight)
@@ -300,14 +300,22 @@ for e in range(EPOCHS):
 	if e%100 == 0:
 		print(loss)
 
-l1.forward(x)
-l2.forward(l1.A)
-l3.forward(l2.A)
-loss = nll(l3.A,y)
+c1.forward(x)
+m1.forward(c1.A)
+
+c2.forward(m1.A)
+m2.forward(c2.A)
+
+f3.forward(m2.A)
+
+l3.forward(f3.A)
+l4.forward(l3.A)
+
+loss = nll(l4.A,y)
 
 print('Final Loss:',loss)
 print('Actual:',y)
-print('Predicted:',np.round(l3.A).astype(int))
+print('Predicted:',np.round(l4.A).astype(int))
 
-acc = 1 - np.sum(np.abs(y-np.round(l3.A)))/m
+acc = 1 - np.sum(np.abs(y-np.round(l4.A)))/m
 print('Acc:',acc)
