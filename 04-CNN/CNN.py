@@ -54,7 +54,8 @@ def zero_pad(x,pad):
 
 def de_zero_pad(x,pad):
 	pH , pW = pad
-	return x[:,pH:-pH,pW:-pW,:]
+	_ , xH, xW , _ = x.shape
+	return x[:,pH:xH-pH,pW:xW-pW,:]
 
 def conv2D(X,W,B):
 	W = np.reshape(W,(1,*W.shape))
@@ -115,8 +116,8 @@ class Conv2D:
 		self.dZ = dA * self.dg(self.Z)
 
 		dAin_pad = np.zeros(self.Ain_pad.shape)
-		dW       = np.zeros(self.W.shape)
-		dB       = np.zeros(self.B.shape)
+		self.dW       = np.zeros(self.W.shape)
+		self.dB       = np.zeros(self.B.shape)
 
 		outHeight  = self.outHeight 
 		outWidth   = self.outWidth  
@@ -129,9 +130,9 @@ class Conv2D:
 				wStart = w*self.strideWidth
 				wEnd   = wStart + self.kWidth
 				for c in range(outChannel):
-					dAin_pad[:,hStart:hEnd,wStart:wEnd,:] += self.W[:,:,:,c] * self.dZ[:,h,w,c]
-					dW[:,:,:,c] += np.sum(self.Ain_pad[:,hStart:hEnd,wStart:wEnd,:] * self.dZ[:,h,w,c],axis=0)
-					dB[c]       += np.sum(self.dZ[:,h,w,c],axis=0)
+					dAin_pad[:,hStart:hEnd,wStart:wEnd,:] += self.W[:,:,:,c] * np.sum(self.dZ[:,h,w,c],axis=0)
+					self.dW[:,:,:,c] += np.sum(self.Ain_pad[:,hStart:hEnd,wStart:wEnd,:] * np.reshape(self.dZ[:,h,w,c],(*self.dZ[:,h,w,c].shape,1,1,1)),axis=0)
+					self.dB[c]       += np.sum(self.dZ[:,h,w,c],axis=0)
 
 		self.dAin = de_zero_pad(dAin_pad,(self.padHeight,self.padWidth))
 
@@ -207,14 +208,11 @@ class Pool:
 				wEnd   = wStart + self.kWidth
 				for c in range(outChannel):
 					if self.poolType == 'MAX':
-						#print(self.Ain_pad[:,hStart:hEnd,wStart:wEnd,c].shape)
-						#print(np.reshape(self.A[:,h,w,c],[*self.A[:,h,w,c].shape,1,1]).shape)
-						#print(dAin_pad[:,hStart:hEnd,wStart:wEnd,c].shape)
-
 						mask = self.Ain_pad[:,hStart:hEnd,wStart:wEnd,c] == np.reshape(self.A[:,h,w,c],[*self.A[:,h,w,c].shape,1,1])
 					elif self.poolType == 'AVG':
 						mask = 1/(self.kWidth*self.kHeight)
-					dAin_pad[:,hStart:hEnd,wStart:wEnd,c] += dA[:,hStart:hEnd,wStart:wEnd,c] * mask
+
+					dAin_pad[:,hStart:hEnd,wStart:wEnd,c] += np.reshape(dA[:,h,w,c],[*self.A[:,h,w,c].shape,1,1]) * mask
 
 		self.dAin = de_zero_pad(dAin_pad,(self.padHeight,self.padWidth))
 
@@ -242,7 +240,7 @@ m = 100
 img_H = img_W = 32
 img_C = 3
 
-EPOCHS = 1
+EPOCHS = 100
 LEARNING_RATE = 1e-1
 
 x = np.random.rand(m,img_H,img_W,img_C)
@@ -289,15 +287,14 @@ for e in range(EPOCHS):
 	c2.backwards(m2.dAin)
 
 	m1.backwards(c2.dAin)
-	c1.backwards(c1.dAin)
+	c1.backwards(m1.dAin)
 
 	c1.update(LEARNING_RATE)
 	c2.update(LEARNING_RATE)
 	l3.update(LEARNING_RATE)
 	l4.update(LEARNING_RATE)
 
-	exit()
-	if e%100 == 0:
+	if e%1 == 0:
 		print(loss)
 
 c1.forward(x)
